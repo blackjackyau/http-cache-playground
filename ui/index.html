@@ -1,0 +1,255 @@
+<html>
+
+<head>
+  <title>Cache Inspector</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0"></script>
+  <script src="https://unpkg.com/vue-router@2.0.0"></script>
+  <!-- currently bootstrap is only used for header - for demo purposes only -->
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" />
+  <style>
+    /* body {
+      height: 100vh;
+    } */
+    .min-100 {
+      min-height: 100%;
+    }
+    .row{
+      display: flex;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <router-view></router-view>
+  </div>
+</body>
+  <!-- 
+      All external js files exist as js files. This way we have eliminated the use of 
+      vue-http-loader. We could turn them to Vue components and use vue-http-loader to compile Vue files.
+      Or, better still - switch to a full Vue setup using CLI, Webpack, et al.
+    -->
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+  <script>
+
+    const Sub = {
+      template: `
+        <div>
+          <h3>Main Component</h3>
+          <button v-on:click="dispatch" class="btn btn-primary mb-2">Dispatch</button>
+          <button v-on:click="raw" class="btn btn-primary mb-2">Raw</button>
+          <table class="table table-striped">
+            <thead class="table-dark">
+              <tr>
+                <th scope="col">Body</th>
+                <th scope="col">Status</th>
+                <th scope="col">Headers</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="responseData in responseDatas">
+                <td> {{ responseData.data }} </td>
+                <td> {{ responseData.status }} </td>
+                <td>
+                  <ul class="list-group" v-for="headerKey in Object.keys(responseData.headers)">
+                    <li class="list-group-item">{{ headerKey }} {{ responseData.headers[headerKey] }}</li>
+                  </ul>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>`,
+      data() {
+        return {
+          responseDatas: [],
+          validationErrors: [],
+        };
+      },
+      methods: {
+        async dispatch(event) {
+          const res = await axios.get(
+            "http://localhost:8888/api/user",
+            {},
+            {
+              crossdomain: true,
+            }
+          );
+          console.log(res);
+          this.responseDatas.push(res);
+        },
+        raw() {
+          // https://stackoverflow.com/questions/5173656/how-to-check-if-jquery-ajax-request-header-status-is-304-not-modified?noredirect=1&lq=1
+          var xhr = new XMLHttpRequest();
+          xhr.open("GET", "http://localhost:8888/api/user");
+          xhr.setRequestHeader("If-None-Match", `W/"1c-MBKTiNeBzAcxq85JK458DAujD1I"`);
+          xhr.send();
+          xhr.onload = function () { console.log(xhr.status); }
+        }
+      }
+    };
+
+    const Main = {
+      template: `
+        <div class="container h-100">
+          <h3>Cache Inspector</h3>
+          <div class="form">
+            <div class="form-group row">
+              <label class="col-sm-3">Request URL (GET only)</label>
+              <input type="text" class="col-sm-9 form-control" v-model="request.url"/>
+            </div>
+            <h5>Headers</h5>
+            <div class="form-group row">
+              <label class="col-sm-3">If-None-Match</label>
+              <input type="text" class="col-sm-9 form-control" v-model="request.headers['If-None-Match']"/>
+            </div>
+            <div class="form-group row">
+              <label class="col-sm-3">If-Modified-Since</label>
+              <input type="text" class="col-sm-9 form-control" v-model="request.headers['If-Modified-Since']"/>
+            </div>
+            <div class="form-group row">
+              <label class="col-sm-3">If-Match</label>
+              <input type="text" class="col-sm-9 form-control" v-model="request.headers['If-Match']"/>
+            </div>
+            <div class="text-right mb-3">
+              <button v-on:click="dispatch(request)" class="btn btn-primary">Send</button>
+            </div>
+          </div>
+          <div class="row bg-secondary text-light text-center">
+            <div class="col">Request</div>
+            <div class="col">Response</div>
+          </div>
+          <div class="row" v-for="result in results">
+            <div class="col">
+              <h5>Request</h5>
+              <table class="table table-striped table-bordered">
+                <tbody>
+                  <tr>
+                    <td>Url</td>
+                    <td>{{ result.request.url }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h5>Headers</h5>
+              <table class="table table-striped table-bordered">
+                <tbody>
+                  <tr v-for="headerKey in Object.keys(result.request.headers)">
+                    <td>
+                      {{ headerKey }}
+                    </td>
+                    <td>
+                      {{ result.request.headers[headerKey] }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="col">
+              <h5>Response</h5>
+              <table class="table table-striped table-bordered">
+                <tbody>
+                  <tr>
+                    <td>Status</td>
+                    <td>{{ result.response.status }}</td>
+                  </tr>
+                  <tr>
+                    <td>Body</td>
+                    <td>{{ result.response.data }}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <h5>Headers</h5>
+              <table class="table table-striped table-bordered">
+                <tbody>
+                  <tr v-for="headerKey in Object.keys(result.response.headers)">
+                    <td>
+                      {{ headerKey }}
+                    </td>
+                    <td>
+                      {{ result.response.headers[headerKey] }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>`,
+      data() {
+        return {
+          request: {
+            url: '',
+            headers: {
+            }
+          },
+          results: []
+        };
+      },
+      methods: {
+        async dispatch(request) {
+          // remove headers if empty
+          Object.keys(request.headers).forEach(k => {
+            if (!request.headers[k]) {
+              delete request.headers[k]
+            }
+          });
+  
+          const req = JSON.parse(JSON.stringify(request));
+          try {
+              const response = await axios.get(
+                req.url,
+              {
+                headers: req.headers,
+                crossdomain: true,
+              }
+            );
+            this.results.push({"request": req, response});
+          } catch (error) {
+              if (error.response) {
+                const response = error.response;
+                this.results.push({"request": req, response});
+            } else {
+              // Something happened in setting up the request that triggered an Error
+              console.log('Error', error.message);
+            }
+          }
+        },
+      }
+    };
+
+    Vue.component("Main", Main);
+
+    const routes = [
+      {
+        path: "/",
+        component: Main,
+      }
+    ];
+
+    const router = new VueRouter({
+      routes: routes,
+      mode: "history",
+      base: "/",
+    });
+
+    var app = new Vue({
+      el: "#app",
+      router: router,
+      data() {
+        return {
+          apiurls: {
+            authget: "http://localhost:9000/auth",
+            authpost: "http://localhost:9000/auth",
+            postget: "http://localhost:9000/posts",
+          },
+        };
+      },
+      methods: {
+      },
+    });
+  </script>
+</body>
+
+</html>
