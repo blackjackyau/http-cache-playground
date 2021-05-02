@@ -231,7 +231,7 @@
     const router = new VueRouter({
       routes: routes,
       mode: "history",
-      base: "/",
+      base: window.location.pathname.startsWith("/http-cache-playground") ? "/http-cache-playground" : "/"
     });
 
     var app = new Vue({
