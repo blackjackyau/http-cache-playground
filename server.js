@@ -21,7 +21,7 @@ module.exports = () => {
 
     app.use('/api', router);
 
-    app.use(express.static("ui"));
+    app.use(express.static("docs"));
 
     app.use((request, response, next) => {
 
