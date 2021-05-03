@@ -1,7 +1,9 @@
 const express = require('express');
 const cfg = require('./config');
 const cors = require('cors');
-const preconditions = require('express-preconditions')
+const preconditions = require('express-preconditions');
+const axios = require('axios');
+const httpClient = require('./http-client')
 
 module.exports = () => {
 
@@ -16,7 +18,7 @@ module.exports = () => {
     };
 
     app.use(cors(corsOptions));
-    app.use(preconditions());
+    //app.use(preconditions());
     app.use(express.json())
 
     app.use('/api', router);
@@ -77,6 +79,43 @@ module.exports = () => {
         })
     });
 
+    const reservedHeaders = ["content-length", "connection", "host"];
+
+    router.get('/proxy/:url(*)', (req, res, next) => {
+        const headers = Object.assign({}, req.headers);
+        for (let rheader of reservedHeaders) {
+            delete headers[rheader]
+        }
+        console.log(headers);
+        axios.get(req.params.url, {headers}).then(resp => {
+
+            for (const headerKey of Object.keys(resp.headers)) {
+                res.setHeader(headerKey, resp.headers[headerKey]);
+            }
+
+            const upstreamInfo = { status: resp.status, headers: resp.headers }
+            res.setHeader("x-upstream-info", JSON.stringify(upstreamInfo));
+
+            res
+                .status(resp.status)
+                .send(resp.data);
+        }).catch(error => {
+            if (error.response) {
+                const resp = error.response;
+                for (const headerKey of Object.keys(resp.headers)) {
+                    res.setHeader(headerKey, resp.headers[headerKey]);
+                }
+                const upstreamInfo = { status: resp.status, headers: resp.headers }
+                res.setHeader("x-upstream-info", JSON.stringify(upstreamInfo));
+    
+                res
+                    .status(resp.status)
+                    .send(resp.data);
+            } else {
+                next(error);
+            }
+        });
+    });
 
     const store = {};
 
@@ -123,6 +162,7 @@ module.exports = () => {
             .set('Last-Modified', resource.lastModified)
             .end();
     });
+
 
     app.listen(cfg.PORT, () => {
         console.log(`Backend server is running at port:${cfg.PORT}`);
