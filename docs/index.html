@@ -27,7 +27,7 @@
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
   <script>
-    const cacheRelatedHeaders = ["cache-control", "date", "etag", "expires", "pragma", "vary", "last-modified"];
+    const cacheRelatedHeaders = ["cache-control", "date", "etag", "expires", "pragma", "vary", "last-modified", "if-none-match", "if-modified-since", "if-match"];
 
     const Minifier = {
       template: `
@@ -81,6 +81,10 @@
               </label>
             </div>
             <h5>Headers</h5>
+            <div class="form-group row">
+              <label class="col-sm-3">Accept-Language</label>
+              <input type="text" class="col-sm-9 form-control" v-model="request.headers['Accept-Language']"/>
+            </div>
             <div class="form-group row">
               <label class="col-sm-3">If-None-Match</label>
               <input type="text" class="col-sm-9 form-control" v-model="request.headers['If-None-Match']"/>
@@ -189,6 +193,7 @@
             url: this.$route.query.url ? this.$route.query.url : '',
             disableCache: false,
             headers: {
+              "Accept-Language": "en-GB"
             }
           },
           results: []
@@ -196,7 +201,7 @@
       },
       methods: {
         cacheRelated(headerKey) {
-          return cacheRelatedHeaders.includes(headerKey);
+          return cacheRelatedHeaders.includes(headerKey.toLowerCase());
         },
         async dispatch(request) {
           // remove headers if empty

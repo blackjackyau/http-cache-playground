@@ -15,6 +15,7 @@ module.exports = () => {
             callback(null, true);
         },
         credentials: true,
+        maxAge: 3600,
     };
 
     app.use(cors(corsOptions));
@@ -72,10 +73,14 @@ module.exports = () => {
     });
 
     router.get('/user', (req, res) => {
-        res.setHeader('cache-control', 'public, max-age=1');
+        const ttl = 1000;
+        res.setHeader('cache-control', `public, max-age=${ttl}`);
+        res.setHeader('Vary', "accept-language");
+        res.setHeader('expires', new Date(Date.now() + ( ttl * 1000 )).toUTCString(),);
         res.status(200).json({
             "name": "lalaking",
-            "age": 10
+            "age": 10,
+            "lang": req.headers["accept-language"]
         })
     });
 
